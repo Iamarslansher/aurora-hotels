@@ -13,17 +13,32 @@ import {
 } from 'lucide-react';
 import { formatPKR, maskCNIC } from '../utils/formatters';
 
+import { getBookingById } from '../firebase/bookingService';
+
 export const BookingConfirmationPage = () => {
   const { id } = useParams();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Retrieve booking from route state or local storage
-  let booking = location.state?.booking;
+  const [booking, setBooking] = React.useState(location.state?.booking || null);
+  const [loading, setLoading] = React.useState(!location.state?.booking);
 
-  if (!booking) {
-    const local = JSON.parse(localStorage.getItem('aurora_local_bookings') || '[]');
-    booking = local.find((b) => b.id === id);
+  React.useEffect(() => {
+    if (!booking && id) {
+      setLoading(true);
+      getBookingById(id)
+        .then((data) => setBooking(data))
+        .catch((err) => console.error('Error fetching booking from Firestore:', err))
+        .finally(() => setLoading(false));
+    }
+  }, [id, booking]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-ivory pt-32 pb-20 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-gold-400 border-t-gold-600 rounded-full animate-spin" />
+      </div>
+    );
   }
 
   if (!booking) {

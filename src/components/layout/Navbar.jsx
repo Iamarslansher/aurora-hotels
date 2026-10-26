@@ -11,6 +11,7 @@ import {
   LogOut,
   ChevronDown,
   Building,
+  UserCheck,
 } from 'lucide-react';
 import { AuroraLogo } from '../common/AuroraLogo';
 import { useAuth } from '../../context/AuthContext';
@@ -21,7 +22,7 @@ export const Navbar = () => {
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, userProfile, isAdmin, logout, quickDemoLogin } = useAuth();
+  const { user, userProfile, isAdmin, logout } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -63,6 +64,15 @@ export const Navbar = () => {
     await logout();
     navigate('/');
   };
+
+  const userInitials = user?.displayName
+    ? user.displayName
+        .split(' ')
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : user?.email?.charAt(0).toUpperCase() || 'G';
 
   return (
     <header
@@ -108,15 +118,15 @@ export const Navbar = () => {
                   onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                   className="flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-navy-800/80 border border-gold-500/30 hover:border-gold-500/60 text-ivory text-sm transition-all focus:outline-none"
                 >
-                  <div className="w-7 h-7 rounded-full bg-gold-gradient flex items-center justify-center text-navy-950 font-bold text-xs">
-                    {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'A'}
+                  <div className="w-8 h-8 rounded-full bg-gold-gradient flex items-center justify-center text-navy-950 font-bold text-xs shadow-xs">
+                    {userInitials}
                   </div>
                   <div className="text-left hidden lg:block">
-                    <p className="text-xs font-semibold text-ivory-100 leading-none truncate max-w-[120px]">
-                      {user.displayName || 'Valued Guest'}
+                    <p className="text-xs font-semibold text-ivory-100 leading-none truncate max-w-[130px]">
+                      {userProfile?.fullName || user.displayName || 'Valued Guest'}
                     </p>
                     <span className="text-[10px] text-gold-400 capitalize">
-                      {isAdmin ? 'Admin Portal' : 'Customer'}
+                      {isAdmin ? 'Administrator' : 'Guest Account'}
                     </span>
                   </div>
                   <ChevronDown className="w-3.5 h-3.5 text-gold-400" />
@@ -130,7 +140,7 @@ export const Navbar = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 mt-2 w-56 rounded-xl bg-navy-900 border border-gold-500/30 shadow-luxury-lg py-2 text-ivory-100 z-50 divide-y divide-navy-800 backdrop-blur-xl"
+                      className="absolute right-0 mt-2 w-60 rounded-xl bg-navy-900 border border-gold-500/30 shadow-luxury-lg py-2 text-ivory-100 z-50 divide-y divide-navy-800 backdrop-blur-xl"
                     >
                       <div className="px-4 py-2.5">
                         <p className="text-xs text-ivory-400">Signed in as</p>
@@ -142,14 +152,26 @@ export const Navbar = () => {
                         )}
                       </div>
 
+                      {/* Customer-Specific vs Admin-Specific Options */}
                       <div className="py-1">
-                        <Link
-                          to="/customer/bookings"
-                          className="flex items-center gap-2.5 px-4 py-2 text-sm text-ivory-200 hover:text-gold-300 hover:bg-navy-800 transition-colors"
-                        >
-                          <Calendar className="w-4 h-4 text-gold-400" />
-                          My Bookings
-                        </Link>
+                        {!isAdmin && (
+                          <>
+                            <Link
+                              to="/profile"
+                              className="flex items-center gap-2.5 px-4 py-2 text-sm text-ivory-200 hover:text-gold-300 hover:bg-navy-800 transition-colors"
+                            >
+                              <User className="w-4 h-4 text-gold-400" />
+                              My Profile
+                            </Link>
+                            <Link
+                              to="/customer/bookings"
+                              className="flex items-center gap-2.5 px-4 py-2 text-sm text-ivory-200 hover:text-gold-300 hover:bg-navy-800 transition-colors"
+                            >
+                              <Calendar className="w-4 h-4 text-gold-400" />
+                              My Reservations
+                            </Link>
+                          </>
+                        )}
 
                         {isAdmin && (
                           <Link
@@ -157,7 +179,7 @@ export const Navbar = () => {
                             className="flex items-center gap-2.5 px-4 py-2 text-sm text-emerald-300 hover:text-emerald-200 hover:bg-navy-800 transition-colors"
                           >
                             <Building className="w-4 h-4 text-emerald-400" />
-                            Admin Dashboard
+                            Admin Operations Hub
                           </Link>
                         )}
                       </div>
@@ -191,28 +213,6 @@ export const Navbar = () => {
                 </Link>
               </div>
             )}
-
-            {/* Quick Demo Role Switcher for seamless review */}
-            <div className="hidden xl:flex items-center text-[11px] bg-navy-900/80 border border-navy-700 rounded-lg p-0.5 ml-2">
-              <button
-                onClick={() => quickDemoLogin('customer')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  user && !isAdmin ? 'bg-gold-500/20 text-gold-300 font-bold' : 'text-ivory-400 hover:text-ivory-200'
-                }`}
-                title="Simulate Customer Account"
-              >
-                Customer
-              </button>
-              <button
-                onClick={() => quickDemoLogin('admin')}
-                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
-                  isAdmin ? 'bg-emerald-500/20 text-emerald-300 font-bold' : 'text-ivory-400 hover:text-ivory-200'
-                }`}
-                title="Simulate Admin Account"
-              >
-                Admin
-              </button>
-            </div>
           </div>
 
           {/* Mobile Menu Button */}
@@ -259,16 +259,26 @@ export const Navbar = () => {
                 <>
                   <div className="px-3 py-2 bg-navy-900 rounded-lg">
                     <p className="text-xs text-ivory-400">Signed in as</p>
-                    <p className="text-sm font-semibold text-ivory truncate">{user.displayName || user.email}</p>
+                    <p className="text-sm font-semibold text-ivory truncate">{userProfile?.fullName || user.email}</p>
                     <p className="text-[11px] text-gold-400 mt-0.5">{isAdmin ? 'Administrator' : 'Customer'}</p>
                   </div>
 
-                  <Link
-                    to="/customer/bookings"
-                    className="block w-full text-center px-4 py-2.5 rounded-lg bg-navy-900 border border-gold-500/30 text-ivory text-sm font-medium"
-                  >
-                    My Bookings
-                  </Link>
+                  {!isAdmin && (
+                    <>
+                      <Link
+                        to="/profile"
+                        className="block w-full text-center px-4 py-2.5 rounded-lg bg-navy-900 border border-gold-500/30 text-ivory text-sm font-medium"
+                      >
+                        My Profile
+                      </Link>
+                      <Link
+                        to="/customer/bookings"
+                        className="block w-full text-center px-4 py-2.5 rounded-lg bg-navy-900 border border-gold-500/30 text-ivory text-sm font-medium"
+                      >
+                        My Reservations
+                      </Link>
+                    </>
+                  )}
 
                   {isAdmin && (
                     <Link
@@ -302,25 +312,6 @@ export const Navbar = () => {
                   </Link>
                 </div>
               )}
-
-              {/* Mobile Quick demo toggles */}
-              <div className="flex items-center justify-between text-xs pt-2 text-ivory-400">
-                <span>Demo switch:</span>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => quickDemoLogin('customer')}
-                    className="px-2 py-1 bg-navy-800 border border-navy-700 rounded text-gold-300 text-xs"
-                  >
-                    Customer
-                  </button>
-                  <button
-                    onClick={() => quickDemoLogin('admin')}
-                    className="px-2 py-1 bg-navy-800 border border-navy-700 rounded text-emerald-300 text-xs"
-                  >
-                    Admin
-                  </button>
-                </div>
-              </div>
             </div>
           </motion.div>
         )}

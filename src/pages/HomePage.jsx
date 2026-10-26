@@ -4,6 +4,7 @@ import { FeaturedRooms } from '../components/home/FeaturedRooms';
 import { HowItWorks } from '../components/home/HowItWorks';
 import { AiPlannerTeaser } from '../components/home/AiPlannerTeaser';
 import { AboutSection } from '../components/home/AboutSection';
+import { GuestReviewsSection } from '../components/home/GuestReviewsSection';
 import { ContactSection } from '../components/home/ContactSection';
 
 export const HomePage = () => {
@@ -24,7 +25,10 @@ export const HomePage = () => {
       {/* 5. Dedicated About Section with Benefits */}
       <AboutSection />
 
-      {/* 6. Validated Contact Section */}
+      {/* 6. Real Verified Guest Reviews Section */}
+      <GuestReviewsSection />
+
+      {/* 7. Validated Contact Section */}
       <ContactSection />
     </main>
   );

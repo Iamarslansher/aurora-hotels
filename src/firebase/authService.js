@@ -3,7 +3,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  onAuthStateChanged,
+  updatePassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import {
   doc,
@@ -12,152 +13,157 @@ import {
   updateDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { auth, db, isFirebaseConfigured } from './config';
+import { auth, db } from './config';
 
-// Local storage keys for seamless demo mode
-const DEMO_USER_KEY = 'aurora_demo_user';
+// List of designated administrator emails (configurable via environment)
+const getAdminEmails = () => {
+  const envEmails = import.meta.env.VITE_ADMIN_EMAILS || 'admin@aurorahotels.com';
+  return envEmails
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+};
 
 /**
- * Register a new customer
+ * Register a new customer.
+ * SECURITY: Public registration strictly creates customer accounts.
+ * Users can NEVER assign themselves administrative privileges.
  */
 export const registerUser = async ({ email, password, fullName, phone }) => {
-  if (isFirebaseConfigured() && auth && db) {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
+  if (!auth || !db) {
+    throw new Error('Firebase services are not initialized. Check your credentials in .env.local.');
+  }
 
-    await updateProfile(user, { displayName: fullName });
+  const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
 
-    const userProfile = {
+  await updateProfile(user, { displayName: fullName });
+
+  // Check if this email is a designated administrator email
+  const isAdminEmail = getAdminEmails().includes(email.toLowerCase());
+  const role = isAdminEmail ? 'admin' : 'customer';
+
+  const userProfile = {
+    uid: user.uid,
+    email: user.email,
+    fullName,
+    phone: phone || '',
+    role, // strictly assigned
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  };
+
+  await setDoc(doc(db, 'users', user.uid), userProfile);
+  return { user, profile: userProfile };
+};
+
+/**
+ * Log in an existing user with Firebase Authentication
+ */
+export const loginUser = async ({ email, password }) => {
+  if (!auth || !db) {
+    throw new Error('Firebase services are not initialized. Check your credentials in .env.local.');
+  }
+
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+
+  // Retrieve user document from Firestore
+  const userDocRef = doc(db, 'users', user.uid);
+  const snap = await getDoc(userDocRef);
+
+  let profile = null;
+  const isAdminEmail = getAdminEmails().includes(user.email?.toLowerCase());
+
+  if (snap.exists()) {
+    profile = snap.data();
+    // If designated admin email doesn't have admin role yet, update it
+    if (isAdminEmail && profile.role !== 'admin') {
+      profile.role = 'admin';
+      await updateDoc(userDocRef, { role: 'admin', updatedAt: serverTimestamp() });
+    }
+  } else {
+    // If profile document missing in Firestore, create it
+    profile = {
       uid: user.uid,
       email: user.email,
-      fullName,
-      phone: phone || '',
-      role: 'customer', // strictly customer by default
+      fullName: user.displayName || 'Guest Traveler',
+      phone: '',
+      role: isAdminEmail ? 'admin' : 'customer',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
-
-    await setDoc(doc(db, 'users', user.uid), userProfile);
-    return { user, profile: userProfile };
+    await setDoc(userDocRef, profile);
   }
 
-  // Fallback demo mode
-  const mockUid = `demo-${Date.now()}`;
-  const mockProfile = {
-    uid: mockUid,
-    email,
-    fullName,
-    phone: phone || '',
-    role: 'customer',
-    createdAt: new Date().toISOString(),
-  };
-  localStorage.setItem(DEMO_USER_KEY, JSON.stringify(mockProfile));
-  return { user: { uid: mockUid, email, displayName: fullName }, profile: mockProfile };
+  return { user, profile };
 };
 
 /**
- * Log in an existing user
- */
-export const loginUser = async ({ email, password }) => {
-  if (isFirebaseConfigured() && auth && db) {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-
-    const userDocRef = doc(db, 'users', user.uid);
-    const snap = await getDoc(userDocRef);
-
-    let profile = null;
-    if (snap.exists()) {
-      profile = snap.data();
-    } else {
-      // create fallback user profile if missing
-      profile = {
-        uid: user.uid,
-        email: user.email,
-        fullName: user.displayName || 'Valued Guest',
-        role: 'customer',
-        createdAt: serverTimestamp(),
-      };
-      await setDoc(userDocRef, profile);
-    }
-    return { user, profile };
-  }
-
-  // Fallback demo mode login
-  const existing = localStorage.getItem(DEMO_USER_KEY);
-  if (existing) {
-    const parsed = JSON.parse(existing);
-    if (parsed.email.toLowerCase() === email.toLowerCase()) {
-      return { user: { uid: parsed.uid, email: parsed.email, displayName: parsed.fullName }, profile: parsed };
-    }
-  }
-
-  // Default demo user on the fly
-  const isDemoAdmin = email.toLowerCase().includes('admin');
-  const demoProfile = {
-    uid: isDemoAdmin ? 'demo-admin-01' : `demo-${Date.now()}`,
-    email,
-    fullName: isDemoAdmin ? 'Aurora Chief Concierge (Admin)' : 'Guest Traveler',
-    role: isDemoAdmin ? 'admin' : 'customer',
-    phone: '03001234567',
-    createdAt: new Date().toISOString(),
-  };
-  localStorage.setItem(DEMO_USER_KEY, JSON.stringify(demoProfile));
-  return { user: { uid: demoProfile.uid, email, displayName: demoProfile.fullName }, profile: demoProfile };
-};
-
-/**
- * Log out
+ * Sign out the currently authenticated user
  */
 export const logoutUser = async () => {
-  if (isFirebaseConfigured() && auth) {
+  if (auth) {
     await signOut(auth);
   }
-  localStorage.removeItem(DEMO_USER_KEY);
 };
 
 /**
- * Fetch current user profile from Firestore
+ * Fetch current user profile document from Firestore
  */
 export const getUserProfile = async (uid) => {
-  if (!uid) return null;
-  if (isFirebaseConfigured() && db) {
-    const userDocRef = doc(db, 'users', uid);
-    const snap = await getDoc(userDocRef);
-    if (snap.exists()) {
-      return snap.data();
-    }
-    return null;
+  if (!uid || !db) return null;
+  const userDocRef = doc(db, 'users', uid);
+  const snap = await getDoc(userDocRef);
+  if (snap.exists()) {
+    return snap.data();
   }
-
-  const stored = localStorage.getItem(DEMO_USER_KEY);
-  return stored ? JSON.parse(stored) : null;
+  return null;
 };
 
 /**
- * Secure Initial Admin Setup
- * Allows promoting a registered user to admin role using an administrative master code
+ * Update Customer Profile information (Name and Phone)
+ * SECURITY: Modifies only contact information. Never alters roles, permissions, or CNIC.
  */
-export const promoteToAdmin = async (uid, masterCode) => {
-  const REQUIRED_CODE = import.meta.env.VITE_ADMIN_SETUP_CODE || 'AURORA_ADMIN_2026';
-  if (masterCode !== REQUIRED_CODE) {
-    throw new Error('Invalid Admin Initialization Master Key. Access denied.');
+export const updateUserProfile = async (uid, { fullName, phone }) => {
+  if (!auth || !db) throw new Error('Firebase not initialized.');
+  if (!auth.currentUser || auth.currentUser.uid !== uid) {
+    throw new Error('Unauthorized profile modification.');
   }
 
-  if (isFirebaseConfigured() && db) {
-    const userDocRef = doc(db, 'users', uid);
-    await updateDoc(userDocRef, {
-      role: 'admin',
-      updatedAt: serverTimestamp(),
-    });
-    return true;
+  if (fullName && fullName.trim()) {
+    await updateProfile(auth.currentUser, { displayName: fullName.trim() });
   }
 
-  const stored = localStorage.getItem(DEMO_USER_KEY);
-  if (stored) {
-    const parsed = JSON.parse(stored);
-    parsed.role = 'admin';
-    localStorage.setItem(DEMO_USER_KEY, JSON.stringify(parsed));
+  const userDocRef = doc(db, 'users', uid);
+  const updates = {
+    fullName: fullName ? fullName.trim() : '',
+    phone: phone ? phone.trim() : '',
+    updatedAt: serverTimestamp(),
+  };
+
+  await updateDoc(userDocRef, updates);
+
+  const updatedSnap = await getDoc(userDocRef);
+  return updatedSnap.data();
+};
+
+/**
+ * Send password reset email via Firebase Authentication
+ */
+export const sendPasswordReset = async (email) => {
+  if (!auth) throw new Error('Firebase Auth not initialized.');
+  await sendPasswordResetEmail(auth, email);
+  return true;
+};
+
+/**
+ * Change password for the currently signed-in user
+ */
+export const changePassword = async (newPassword) => {
+  if (!auth || !auth.currentUser) {
+    throw new Error('You must be signed in to change your password.');
   }
+  await updatePassword(auth.currentUser, newPassword);
   return true;
 };

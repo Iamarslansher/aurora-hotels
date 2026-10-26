@@ -7,119 +7,80 @@ import {
   deleteDoc,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from './config';
+import { db } from './config';
 import { INITIAL_SERVICES } from '../utils/seedData';
 
 const SERVICES_COLLECTION = 'services';
-const LOCAL_SERVICES_KEY = 'aurora_local_services';
 
-const getLocalServices = () => {
-  const data = localStorage.getItem(LOCAL_SERVICES_KEY);
-  if (!data) {
-    localStorage.setItem(LOCAL_SERVICES_KEY, JSON.stringify(INITIAL_SERVICES));
-    return INITIAL_SERVICES;
-  }
-  try {
-    return JSON.parse(data);
-  } catch {
-    return INITIAL_SERVICES;
-  }
-};
-
-const saveLocalServices = (services) => {
-  localStorage.setItem(LOCAL_SERVICES_KEY, JSON.stringify(services));
-};
-
+/**
+ * Fetch all configured services from Firestore
+ */
 export const getServices = async ({ onlyActive = true } = {}) => {
-  let list = [];
+  if (!db) {
+    throw new Error('Firestore not initialized.');
+  }
 
-  if (isFirebaseConfigured() && db) {
-    try {
-      const snap = await getDocs(collection(db, SERVICES_COLLECTION));
-      if (!snap.empty) {
-        snap.forEach((d) => {
-          list.push({ id: d.id, ...d.data() });
-        });
-      } else {
-        list = [...INITIAL_SERVICES];
-      }
-    } catch (err) {
-      console.warn('Error fetching services from Firestore, using local fallback:', err);
-      list = getLocalServices();
-    }
-  } else {
-    list = getLocalServices();
+  const list = [];
+  try {
+    const snap = await getDocs(collection(db, SERVICES_COLLECTION));
+    snap.forEach((d) => {
+      list.push({ id: d.id, ...d.data() });
+    });
+  } catch (err) {
+    console.error('Error fetching services from Firestore:', err);
+    throw err;
   }
 
   if (onlyActive) {
-    list = list.filter((s) => s.isActive !== false);
+    return list.filter((s) => s.isActive !== false);
   }
 
   return list;
 };
 
+/**
+ * Add a new configurable service (Admin only)
+ */
 export const addService = async (serviceData) => {
+  if (!db) throw new Error('Firestore not initialized.');
   const serviceId = `srv-${Date.now()}`;
   const payload = {
     ...serviceData,
     price: Number(serviceData.price),
     isActive: serviceData.isActive ?? true,
-    createdAt: new Date().toISOString(),
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
-  if (isFirebaseConfigured() && db) {
-    await setDoc(doc(db, SERVICES_COLLECTION, serviceId), {
-      ...payload,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalServices();
-  local.push({ id: serviceId, ...payload });
-  saveLocalServices(local);
-
+  await setDoc(doc(db, SERVICES_COLLECTION, serviceId), payload);
   return { id: serviceId, ...payload };
 };
 
+/**
+ * Update service details (Admin only)
+ */
 export const updateService = async (serviceId, serviceData) => {
+  if (!db) throw new Error('Firestore not initialized.');
   const updates = {
     ...serviceData,
     price: Number(serviceData.price),
-    updatedAt: new Date().toISOString(),
+    updatedAt: serverTimestamp(),
   };
 
-  if (isFirebaseConfigured() && db) {
-    await updateDoc(doc(db, SERVICES_COLLECTION, serviceId), {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalServices();
-  const index = local.findIndex((s) => s.id === serviceId);
-  if (index !== -1) {
-    local[index] = { ...local[index], ...updates };
-    saveLocalServices(local);
-  }
-
+  const docRef = doc(db, SERVICES_COLLECTION, serviceId);
+  await updateDoc(docRef, updates);
   return { id: serviceId, ...updates };
 };
 
+/**
+ * Toggle service active status (Admin only)
+ */
 export const toggleServiceStatus = async (serviceId, isActive) => {
-  if (isFirebaseConfigured() && db) {
-    await updateDoc(doc(db, SERVICES_COLLECTION, serviceId), {
-      isActive,
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalServices();
-  const index = local.findIndex((s) => s.id === serviceId);
-  if (index !== -1) {
-    local[index].isActive = isActive;
-    saveLocalServices(local);
-  }
+  if (!db) throw new Error('Firestore not initialized.');
+  await updateDoc(doc(db, SERVICES_COLLECTION, serviceId), {
+    isActive,
+    updatedAt: serverTimestamp(),
+  });
 };
 
 /**
@@ -144,16 +105,18 @@ export const calculateServiceCost = (service, guests = 1, nights = 1) => {
   }
 };
 
+/**
+ * Seed initial service catalog into Firestore
+ */
 export const seedInitialServices = async () => {
-  if (isFirebaseConfigured() && db) {
-    for (const s of INITIAL_SERVICES) {
-      await setDoc(doc(db, SERVICES_COLLECTION, s.id), {
-        ...s,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
+  if (!db) throw new Error('Firestore not initialized.');
+
+  for (const s of INITIAL_SERVICES) {
+    await setDoc(doc(db, SERVICES_COLLECTION, s.id), {
+      ...s,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
   }
-  saveLocalServices(INITIAL_SERVICES);
   return true;
 };

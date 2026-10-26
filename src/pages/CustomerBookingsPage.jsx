@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Calendar,
   Users,
@@ -11,11 +11,13 @@ import {
   Building,
   ArrowRight,
   Lock,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useHotel } from '../context/HotelContext';
 import { getUserBookings, cancelBooking } from '../firebase/bookingService';
 import { formatPKR, maskCNIC } from '../utils/formatters';
+import { ReviewModal } from '../components/reviews/ReviewModal';
 
 export const CustomerBookingsPage = () => {
   const { user } = useAuth();
@@ -25,16 +27,16 @@ export const CustomerBookingsPage = () => {
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState('all'); // 'all', 'confirmed', 'cancelled'
   const [cancellingId, setCancellingId] = useState(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const fetchBookings = async () => {
+    if (!user) return;
     setLoading(true);
     try {
-      // In demo mode or live auth, fetch customer reservations
-      const userId = user ? user.uid : 'demo-customer-aurora';
-      const results = await getUserBookings(userId);
+      const results = await getUserBookings(user.uid);
       setBookings(results);
     } catch (err) {
-      console.warn('Error fetching bookings:', err);
+      console.error('Error fetching bookings from Firestore:', err);
     } finally {
       setLoading(false);
     }
@@ -51,7 +53,7 @@ export const CustomerBookingsPage = () => {
 
     setCancellingId(bookingId);
     try {
-      await cancelBooking(bookingId, user ? user.uid : 'demo-customer-aurora', false);
+      await cancelBooking(bookingId, user.uid, false);
       addToast({
         type: 'info',
         title: 'Booking Cancelled',
@@ -77,9 +79,9 @@ export const CustomerBookingsPage = () => {
 
   return (
     <div className="min-h-screen bg-ivory pt-28 pb-20 text-navy-950">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <span className="text-xs uppercase tracking-[0.25em] text-gold-600 font-bold block mb-1">
               Customer Portal
@@ -88,21 +90,32 @@ export const CustomerBookingsPage = () => {
               My Reservations
             </h1>
             <p className="text-sm text-navy-700/80 mt-1">
-              Review active itineraries, service snapshots, and manage eligible cancellations.
+              Review confirmed stays, locked price snapshots, and submit verified guest reviews.
             </p>
           </div>
 
-          <Link
-            to="/rooms"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold-gradient text-navy-950 font-bold text-xs uppercase tracking-wider shadow-sm hover:opacity-95"
-          >
-            <span>Book Another Stay</span>
-            <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setReviewModalOpen(true)}
+              disabled={bookings.length === 0}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gold-500/40 text-gold-700 hover:bg-gold-50 font-bold text-xs uppercase tracking-wider transition-all disabled:opacity-40"
+            >
+              <Star className="w-3.5 h-3.5 text-gold-600 fill-gold-600" />
+              <span>Leave a Review</span>
+            </button>
+            <Link
+              to="/rooms"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gold-gradient text-navy-950 font-bold text-xs uppercase tracking-wider shadow-sm hover:opacity-95"
+            >
+              <span>Book Another Stay</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
         </div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 border-b border-navy-200 pb-3 mb-8">
+        <div className="flex gap-2 border-b border-navy-200 pb-3">
           <button
             onClick={() => setFilterTab('all')}
             className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
@@ -147,7 +160,7 @@ export const CustomerBookingsPage = () => {
             <Calendar className="w-12 h-12 text-gold-600 mx-auto" />
             <h3 className="font-serif text-2xl font-bold text-navy-900">No Reservations Found</h3>
             <p className="text-sm text-navy-700">
-              You do not have any {filterTab !== 'all' ? filterTab : ''} bookings under this profile.
+              You do not have any {filterTab !== 'all' ? filterTab : ''} bookings recorded in your account.
             </p>
             <Link
               to="/rooms"
@@ -264,6 +277,17 @@ export const CustomerBookingsPage = () => {
           </div>
         )}
       </div>
+
+      {/* Review Modal */}
+      {reviewModalOpen && (
+        <ReviewModal
+          isOpen={reviewModalOpen}
+          onClose={() => setReviewModalOpen(false)}
+          onReviewSubmitted={() => {
+            fetchBookings();
+          }}
+        />
+      )}
     </div>
   );
 };

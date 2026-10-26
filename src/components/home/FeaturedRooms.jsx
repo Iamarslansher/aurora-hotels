@@ -42,8 +42,22 @@ export const FeaturedRooms = () => {
         </div>
 
         {/* Room Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {displayRooms.map((room, index) => (
+        {displayRooms.length === 0 ? (
+          <div className="text-center py-12 px-6 bg-white rounded-3xl border border-gold-500/20 max-w-lg mx-auto space-y-3">
+            <h3 className="font-serif text-xl font-bold text-navy-900">Suites Inventory Updating</h3>
+            <p className="text-xs text-navy-600">
+              Our curated room collections are being synchronized. Please browse all available categories below.
+            </p>
+            <Link
+              to="/rooms"
+              className="inline-block px-5 py-2 rounded-xl bg-navy-900 text-ivory text-xs font-bold uppercase tracking-wider"
+            >
+              Check Rooms Catalog
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {displayRooms.map((room, index) => (
             <motion.div
               key={room.id}
               initial={{ opacity: 0, y: 30 }}
@@ -136,6 +150,7 @@ export const FeaturedRooms = () => {
             </motion.div>
           ))}
         </div>
+        )}
       </div>
     </section>
   );

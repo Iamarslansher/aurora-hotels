@@ -142,19 +142,25 @@ export const RoomsPage = () => {
         ) : filteredRooms.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-3xl border border-gold-500/20 p-8 shadow-luxury max-w-xl mx-auto space-y-4">
             <AlertCircle className="w-12 h-12 text-gold-600 mx-auto" />
-            <h3 className="font-serif text-2xl font-bold text-navy-900">No Matching Suites Found</h3>
+            <h3 className="font-serif text-2xl font-bold text-navy-900">
+              {rooms.length === 0 ? 'Hotel Catalog Currently Empty' : 'No Matching Suites Found'}
+            </h3>
             <p className="text-sm text-navy-700">
-              No rooms match your specific guest count or category filter. Try selecting "All Rooms" or lowering your guest count.
+              {rooms.length === 0
+                ? 'No rooms have been initialized in Firestore yet. Administrators can populate the room inventory via the Admin Operations Hub.'
+                : 'No suites match your specific guest count or category filter. Try selecting "All Rooms" or lowering your guest count.'}
             </p>
-            <button
-              onClick={() => {
-                setSelectedCategory('All');
-                setGuestFilter(1);
-              }}
-              className="mt-2 px-6 py-2.5 rounded-xl bg-navy-900 text-ivory text-xs font-bold uppercase tracking-wider"
-            >
-              Reset Filters
-            </button>
+            {rooms.length > 0 ? (
+              <button
+                onClick={() => {
+                  setSelectedCategory('All');
+                  setGuestFilter(1);
+                }}
+                className="mt-2 px-6 py-2.5 rounded-xl bg-navy-900 text-ivory text-xs font-bold uppercase tracking-wider"
+              >
+                Reset Filters
+              </button>
+            ) : null}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth, isFirebaseConfigured } from '../firebase/config';
+import { auth, db } from '../firebase/config';
 import {
   loginUser,
   registerUser,
   logoutUser,
   getUserProfile,
-  promoteToAdmin,
+  updateUserProfile,
+  sendPasswordReset,
+  changePassword,
 } from '../firebase/authService';
 
 const AuthContext = createContext(null);
@@ -16,40 +18,28 @@ export const AuthProvider = ({ children }) => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Initialize Auth state
+  // Initialize and listen to persistent Firebase Auth state
   useEffect(() => {
-    let unsubscribe = () => {};
+    if (!auth) {
+      setLoading(false);
+      return;
+    }
 
-    if (isFirebaseConfigured() && auth) {
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          setUser(firebaseUser);
-          try {
-            const profile = await getUserProfile(firebaseUser.uid);
-            setUserProfile(profile);
-          } catch (err) {
-            console.warn('Failed to load user profile:', err);
-          }
-        } else {
-          setUser(null);
-          setUserProfile(null);
-        }
-        setLoading(false);
-      });
-    } else {
-      // Local demo mode check
-      const stored = localStorage.getItem('aurora_demo_user');
-      if (stored) {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        setUser(firebaseUser);
         try {
-          const parsed = JSON.parse(stored);
-          setUser({ uid: parsed.uid, email: parsed.email, displayName: parsed.fullName });
-          setUserProfile(parsed);
-        } catch {
-          // ignore error
+          const profile = await getUserProfile(firebaseUser.uid);
+          setUserProfile(profile);
+        } catch (err) {
+          console.error('Failed to load user profile from Firestore:', err);
         }
+      } else {
+        setUser(null);
+        setUserProfile(null);
       }
       setLoading(false);
-    }
+    });
 
     return () => unsubscribe();
   }, []);
@@ -74,7 +64,7 @@ export const AuthProvider = ({ children }) => {
       const { user: loggedInUser, profile } = await loginUser(credentials);
       setUser(loggedInUser);
       setUserProfile(profile);
-      return { success: true };
+      return { success: true, profile };
     } catch (err) {
       return { success: false, error: err.message };
     } finally {
@@ -93,35 +83,19 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // Quick switch for reviewing Customer vs Admin capabilities
-  const quickDemoLogin = (role = 'customer') => {
-    const demoProfile = role === 'admin'
-      ? {
-          uid: 'demo-admin-aurora',
-          email: 'admin@aurorahotels.com',
-          fullName: 'Arsalan Sher (Admin Concierge)',
-          role: 'admin',
-          phone: '03001234567',
-        }
-      : {
-          uid: 'demo-customer-aurora',
-          email: 'guest@aurorahotels.com',
-          fullName: 'Syed Hamza Ali (Valued Guest)',
-          role: 'customer',
-          phone: '03219876543',
-        };
-
-    localStorage.setItem('aurora_demo_user', JSON.stringify(demoProfile));
-    setUser({ uid: demoProfile.uid, email: demoProfile.email, displayName: demoProfile.fullName });
-    setUserProfile(demoProfile);
+  const updateProfileData = async (data) => {
+    if (!user) throw new Error('Not authenticated.');
+    const updated = await updateUserProfile(user.uid, data);
+    setUserProfile(updated);
+    return updated;
   };
 
-  const claimAdminRole = async (masterCode) => {
-    if (!user) throw new Error('You must be logged in to claim administrator privileges.');
-    await promoteToAdmin(user.uid, masterCode);
-    const updated = await getUserProfile(user.uid);
-    setUserProfile(updated);
-    return true;
+  const resetUserPassword = async (email) => {
+    return await sendPasswordReset(email);
+  };
+
+  const changeUserPassword = async (newPassword) => {
+    return await changePassword(newPassword);
   };
 
   const isAdmin = userProfile?.role === 'admin';
@@ -136,8 +110,9 @@ export const AuthProvider = ({ children }) => {
         login,
         signup,
         logout,
-        quickDemoLogin,
-        claimAdminRole,
+        updateProfileData,
+        resetUserPassword,
+        changeUserPassword,
       }}
     >
       {children}

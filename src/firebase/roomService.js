@@ -9,98 +9,66 @@ import {
   where,
   serverTimestamp,
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from './config';
+import { db } from './config';
 import { INITIAL_ROOMS } from '../utils/seedData';
 import { isDateRangeOverlapping } from '../utils/dateUtils';
 
 const ROOMS_COLLECTION = 'rooms';
-const LOCAL_ROOMS_KEY = 'aurora_local_rooms';
 
 /**
- * Initialize local storage rooms if needed
- */
-const getLocalRooms = () => {
-  const data = localStorage.getItem(LOCAL_ROOMS_KEY);
-  if (!data) {
-    localStorage.setItem(LOCAL_ROOMS_KEY, JSON.stringify(INITIAL_ROOMS));
-    return INITIAL_ROOMS;
-  }
-  try {
-    return JSON.parse(data);
-  } catch {
-    return INITIAL_ROOMS;
-  }
-};
-
-const saveLocalRooms = (rooms) => {
-  localStorage.setItem(LOCAL_ROOMS_KEY, JSON.stringify(rooms));
-};
-
-/**
- * Fetch all rooms with optional filtering
+ * Fetch all rooms from Firestore with optional filtering
  */
 export const getRooms = async ({ category, minGuests, onlyActive = true } = {}) => {
-  let rooms = [];
-
-  if (isFirebaseConfigured() && db) {
-    try {
-      const q = onlyActive
-        ? query(collection(db, ROOMS_COLLECTION), where('isActive', '==', true))
-        : collection(db, ROOMS_COLLECTION);
-      const snap = await getDocs(q);
-
-      if (!snap.empty) {
-        snap.forEach((d) => {
-          rooms.push({ id: d.id, ...d.data() });
-        });
-      } else {
-        // If Firestore is empty, return initial seed data
-        rooms = [...INITIAL_ROOMS];
-      }
-    } catch (err) {
-      console.warn('Error fetching rooms from Firestore, using local data:', err);
-      rooms = getLocalRooms();
-    }
-  } else {
-    rooms = getLocalRooms();
+  if (!db) {
+    throw new Error('Firestore is not initialized.');
   }
 
-  // Apply filters
+  const rooms = [];
+  try {
+    const q = onlyActive
+      ? query(collection(db, ROOMS_COLLECTION), where('isActive', '==', true))
+      : collection(db, ROOMS_COLLECTION);
+    const snap = await getDocs(q);
+
+    snap.forEach((d) => {
+      rooms.push({ id: d.id, ...d.data() });
+    });
+  } catch (err) {
+    console.error('Error fetching rooms from Firestore:', err);
+    throw err;
+  }
+
+  // Filter in memory by category and guest capacity
+  let filtered = rooms;
   if (category && category !== 'All') {
-    rooms = rooms.filter((r) => r.category.toLowerCase() === category.toLowerCase());
+    filtered = filtered.filter((r) => r.category.toLowerCase() === category.toLowerCase());
   }
 
   if (minGuests) {
-    rooms = rooms.filter((r) => r.capacity >= Number(minGuests));
+    filtered = filtered.filter((r) => r.capacity >= Number(minGuests));
   }
 
-  return rooms;
+  return filtered;
 };
 
 /**
- * Fetch a single room by ID
+ * Fetch a single room by ID from Firestore
  */
 export const getRoomById = async (roomId) => {
-  if (isFirebaseConfigured() && db) {
-    try {
-      const docRef = doc(db, ROOMS_COLLECTION, roomId);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        return { id: snap.id, ...snap.data() };
-      }
-    } catch (err) {
-      console.warn('Firestore room get error, falling back:', err);
-    }
+  if (!db || !roomId) return null;
+  const docRef = doc(db, ROOMS_COLLECTION, roomId);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    return { id: snap.id, ...snap.data() };
   }
-
-  const local = getLocalRooms();
-  return local.find((r) => r.id === roomId) || null;
+  return null;
 };
 
 /**
  * Add a new room (Admin only)
  */
 export const addRoom = async (roomData) => {
+  if (!db) throw new Error('Firestore not initialized.');
   const roomId = `room-${Date.now()}`;
   const payload = {
     ...roomData,
@@ -108,22 +76,12 @@ export const addRoom = async (roomData) => {
     capacity: Number(roomData.capacity),
     isActive: roomData.isActive ?? true,
     rating: roomData.rating || 5.0,
-    reviewsCount: roomData.reviewsCount || 1,
-    createdAt: new Date().toISOString(),
+    reviewsCount: roomData.reviewsCount || 0,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
   };
 
-  if (isFirebaseConfigured() && db) {
-    await setDoc(doc(db, ROOMS_COLLECTION, roomId), {
-      ...payload,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalRooms();
-  local.unshift({ id: roomId, ...payload });
-  saveLocalRooms(local);
-
+  await setDoc(doc(db, ROOMS_COLLECTION, roomId), payload);
   return { id: roomId, ...payload };
 };
 
@@ -131,83 +89,55 @@ export const addRoom = async (roomData) => {
  * Update room details (Admin only)
  */
 export const updateRoom = async (roomId, roomData) => {
+  if (!db) throw new Error('Firestore not initialized.');
   const updates = {
     ...roomData,
     pricePerNight: Number(roomData.pricePerNight),
     capacity: Number(roomData.capacity),
-    updatedAt: new Date().toISOString(),
+    updatedAt: serverTimestamp(),
   };
 
-  if (isFirebaseConfigured() && db) {
-    const docRef = doc(db, ROOMS_COLLECTION, roomId);
-    await updateDoc(docRef, {
-      ...updates,
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalRooms();
-  const index = local.findIndex((r) => r.id === roomId);
-  if (index !== -1) {
-    local[index] = { ...local[index], ...updates };
-    saveLocalRooms(local);
-  }
-
+  const docRef = doc(db, ROOMS_COLLECTION, roomId);
+  await updateDoc(docRef, updates);
   return { id: roomId, ...updates };
 };
 
 /**
- * Toggle room active/deactive status (Admin)
+ * Toggle room active/deactivated status (Admin only)
  */
 export const toggleRoomStatus = async (roomId, isActive) => {
-  if (isFirebaseConfigured() && db) {
-    await updateDoc(doc(db, ROOMS_COLLECTION, roomId), {
-      isActive,
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalRooms();
-  const index = local.findIndex((r) => r.id === roomId);
-  if (index !== -1) {
-    local[index].isActive = isActive;
-    saveLocalRooms(local);
-  }
+  if (!db) throw new Error('Firestore not initialized.');
+  await updateDoc(doc(db, ROOMS_COLLECTION, roomId), {
+    isActive,
+    updatedAt: serverTimestamp(),
+  });
 };
 
 /**
- * Check if a room is available for [checkIn, checkOut].
- * Strictly checks against active bookings.
+ * Check if a room is available for dates [checkIn, checkOut] in Firestore.
+ * Strictly checks against active confirmed bookings in Firestore.
  * Does NOT reveal other guests' details.
  */
 export const checkRoomAvailability = async (roomId, checkIn, checkOut, excludeBookingId = null) => {
-  if (!roomId || !checkIn || !checkOut) return { available: true };
+  if (!roomId || !checkIn || !checkOut || !db) return { available: true };
 
-  // Fetch bookings for this room
-  let bookings = [];
-  if (isFirebaseConfigured() && db) {
-    try {
-      const q = query(
-        collection(db, 'bookings'),
-        where('roomId', '==', roomId),
-        where('status', 'in', ['confirmed', 'checked-in'])
-      );
-      const snap = await getDocs(q);
-      snap.forEach((d) => {
-        bookings.push({ id: d.id, ...d.data() });
-      });
-    } catch (err) {
-      console.warn('Falling back to local bookings check:', err);
-    }
+  const bookings = [];
+  try {
+    const q = query(
+      collection(db, 'bookings'),
+      where('roomId', '==', roomId),
+      where('status', 'in', ['confirmed', 'checked-in'])
+    );
+    const snap = await getDocs(q);
+    snap.forEach((d) => {
+      bookings.push({ id: d.id, ...d.data() });
+    });
+  } catch (err) {
+    console.error('Error verifying room availability in Firestore:', err);
+    throw err;
   }
 
-  // Also check local bookings
-  const localBookings = JSON.parse(localStorage.getItem('aurora_local_bookings') || '[]');
-  const allBookings = [...bookings, ...localBookings].filter(
-    (b) => b.roomId === roomId && ['confirmed', 'checked-in'].includes(b.status)
-  );
-
-  for (const b of allBookings) {
+  for (const b of bookings) {
     if (excludeBookingId && b.id === excludeBookingId) continue;
     if (isDateRangeOverlapping(checkIn, checkOut, b.checkIn, b.checkOut)) {
       return {
@@ -221,19 +151,18 @@ export const checkRoomAvailability = async (roomId, checkIn, checkOut, excludeBo
 };
 
 /**
- * Seed initial rooms into Firestore collection
+ * Seed initial luxury room suites into Firestore
+ * Admin action to populate an empty database.
  */
 export const seedInitialRooms = async () => {
-  if (isFirebaseConfigured() && db) {
-    for (const r of INITIAL_ROOMS) {
-      await setDoc(doc(db, ROOMS_COLLECTION, r.id), {
-        ...r,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-    }
-    return true;
+  if (!db) throw new Error('Firestore not initialized.');
+
+  for (const r of INITIAL_ROOMS) {
+    await setDoc(doc(db, ROOMS_COLLECTION, r.id), {
+      ...r,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
   }
-  saveLocalRooms(INITIAL_ROOMS);
   return true;
 };

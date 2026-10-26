@@ -43,15 +43,11 @@ export const HotelProvider = ({ children }) => {
       setRooms(fetchedRooms);
       setServices(fetchedServices);
     } catch (err) {
-      console.warn('Error loading hotel data:', err);
-      addToast({
-        type: 'error',
-        message: 'Could not fetch initial data. Using offline catalog.',
-      });
+      console.error('Error loading hotel data from Firestore:', err);
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  }, []);
 
   useEffect(() => {
     loadData();

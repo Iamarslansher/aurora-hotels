@@ -9,31 +9,17 @@ import {
   where,
   runTransaction,
   serverTimestamp,
+  orderBy,
 } from 'firebase/firestore';
-import { db, isFirebaseConfigured } from './config';
+import { db } from './config';
 import { isDateRangeOverlapping, calculateNights } from '../utils/dateUtils';
-import { checkRoomAvailability, getRoomById } from './roomService';
+import { getRoomById } from './roomService';
 import { calculateServiceCost } from './serviceItemsService';
 
 const BOOKINGS_COLLECTION = 'bookings';
-const LOCAL_BOOKINGS_KEY = 'aurora_local_bookings';
-
-const getLocalBookings = () => {
-  const data = localStorage.getItem(LOCAL_BOOKINGS_KEY);
-  if (!data) return [];
-  try {
-    return JSON.parse(data);
-  } catch {
-    return [];
-  }
-};
-
-const saveLocalBookings = (list) => {
-  localStorage.setItem(LOCAL_BOOKINGS_KEY, JSON.stringify(list));
-};
 
 /**
- * Generate a luxury booking reference code
+ * Generate a unique luxury booking reference code
  */
 const generateBookingReference = () => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -47,7 +33,7 @@ const generateBookingReference = () => {
 /**
  * Concurrency-Safe Booking Creation
  * Validates availability, guest capacity, calculates trusted totals,
- * and saves price snapshots.
+ * locks price snapshots, and executes inside a Firestore transaction.
  */
 export const createBooking = async ({
   userId,
@@ -58,13 +44,17 @@ export const createBooking = async ({
   guestCount,
   checkIn,
   checkOut,
-  selectedServices = [], // array of { service, quantity }
+  selectedServices = [],
   specialRequests = '',
 }) => {
-  // 1. Fetch Room Details
+  if (!db) {
+    throw new Error('Firestore database is not connected. Please verify your configuration.');
+  }
+
+  // 1. Fetch Room Details from Firestore
   const room = await getRoomById(roomId);
   if (!room) {
-    throw new Error('Room not found. Please select a valid room.');
+    throw new Error('Room not found. Please select a valid suite.');
   }
 
   // 2. Validate Guest Capacity
@@ -81,13 +71,7 @@ export const createBooking = async ({
     throw new Error('Check-out date must be after check-in date.');
   }
 
-  // 4. Concurrency & Availability Verification
-  const avail = await checkRoomAvailability(roomId, checkIn, checkOut);
-  if (!avail.available) {
-    throw new Error('This room is unavailable for your selected dates.');
-  }
-
-  // 5. Calculate Trusted Financials & Price Snapshots
+  // 4. Calculate Financials & Price Snapshots
   const roomNightlyPrice = Number(room.pricePerNight);
   const roomSubtotal = roomNightlyPrice * nights;
 
@@ -112,7 +96,7 @@ export const createBooking = async ({
   const bookingPayload = {
     id: bookingId,
     bookingReference,
-    userId: userId || 'guest',
+    userId: userId || 'anonymous',
     roomId,
     roomSnapshot: {
       id: room.id,
@@ -125,7 +109,7 @@ export const createBooking = async ({
     guestDetails: {
       fullName: guestName,
       phone: guestPhone,
-      cnic: guestCNIC, // sensitive; masked in standard views
+      cnic: guestCNIC, // sensitive; masked in views
     },
     guestCount: guests,
     checkIn,
@@ -136,167 +120,138 @@ export const createBooking = async ({
       nights,
       roomSubtotal,
       servicesTotal,
-      taxesAndFees: 0, // No fabricated taxes
+      taxesAndFees: 0,
       grandTotal,
       currency: 'PKR',
     },
     servicesSnapshot,
     specialRequests: specialRequests || '',
     status: 'confirmed', // confirmed, checked-in, checked-out, cancelled
-    paymentStatus: 'Pay Upon Arrival (At Check-In)', // Honest statement, no fake card charge
+    paymentStatus: 'Pay Upon Arrival (At Check-In)',
     createdAt: new Date().toISOString(),
   };
 
-  // 6. Firestore Transaction / Secure Storage
-  if (isFirebaseConfigured() && db) {
-    const bookingDocRef = doc(db, BOOKINGS_COLLECTION, bookingId);
+  // 5. Concurrency Check via Firestore Transaction
+  const bookingDocRef = doc(db, BOOKINGS_COLLECTION, bookingId);
 
-    // Concurrency check inside Firestore transaction
-    await runTransaction(db, async (transaction) => {
-      // Re-verify availability within transaction scope
-      const q = query(
-        collection(db, BOOKINGS_COLLECTION),
-        where('roomId', '==', roomId),
-        where('status', 'in', ['confirmed', 'checked-in'])
-      );
-      const existingSnap = await getDocs(q);
+  await runTransaction(db, async (transaction) => {
+    // Re-verify availability inside transaction scope
+    const q = query(
+      collection(db, BOOKINGS_COLLECTION),
+      where('roomId', '==', roomId),
+      where('status', 'in', ['confirmed', 'checked-in'])
+    );
+    const existingSnap = await getDocs(q);
 
-      let conflict = false;
-      existingSnap.forEach((d) => {
-        const b = d.data();
-        if (isDateRangeOverlapping(checkIn, checkOut, b.checkIn, b.checkOut)) {
-          conflict = true;
-        }
-      });
-
-      if (conflict) {
-        throw new Error('This room is unavailable for your selected dates.');
+    let conflict = false;
+    existingSnap.forEach((d) => {
+      const b = d.data();
+      if (isDateRangeOverlapping(checkIn, checkOut, b.checkIn, b.checkOut)) {
+        conflict = true;
       }
-
-      transaction.set(bookingDocRef, {
-        ...bookingPayload,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
     });
-  }
 
-  // Also persist to local bookings store for demo and immediate reactivity
-  const localList = getLocalBookings();
-  localList.unshift(bookingPayload);
-  saveLocalBookings(localList);
+    if (conflict) {
+      throw new Error('This room is unavailable for your selected dates.');
+    }
+
+    transaction.set(bookingDocRef, {
+      ...bookingPayload,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  });
 
   return bookingPayload;
 };
 
 /**
- * Fetch bookings for a specific customer
+ * Fetch bookings for a specific customer from Firestore
  */
 export const getUserBookings = async (userId) => {
-  if (!userId) return [];
+  if (!userId || !db) return [];
 
-  let results = [];
-
-  if (isFirebaseConfigured() && db) {
-    try {
-      const q = query(
-        collection(db, BOOKINGS_COLLECTION),
-        where('userId', '==', userId)
-      );
-      const snap = await getDocs(q);
-      snap.forEach((d) => {
-        results.push({ id: d.id, ...d.data() });
-      });
-    } catch (err) {
-      console.warn('Error querying user bookings from Firestore:', err);
-    }
+  const results = [];
+  try {
+    const q = query(
+      collection(db, BOOKINGS_COLLECTION),
+      where('userId', '==', userId)
+    );
+    const snap = await getDocs(q);
+    snap.forEach((d) => {
+      results.push({ id: d.id, ...d.data() });
+    });
+  } catch (err) {
+    console.error('Error fetching user bookings from Firestore:', err);
+    throw err;
   }
 
-  // Local fallback
-  const local = getLocalBookings();
-  const matchedLocal = local.filter((b) => b.userId === userId);
-
-  // Merge unique
-  const map = new Map();
-  [...results, ...matchedLocal].forEach((b) => map.set(b.id, b));
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
+  return results.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 };
 
 /**
- * Fetch all bookings (Admin only)
+ * Fetch a single booking by ID
+ */
+export const getBookingById = async (bookingId) => {
+  if (!db || !bookingId) return null;
+  const docRef = doc(db, BOOKINGS_COLLECTION, bookingId);
+  const snap = await getDoc(docRef);
+  if (snap.exists()) {
+    return { id: snap.id, ...snap.data() };
+  }
+  return null;
+};
+
+/**
+ * Fetch all reservations from Firestore (Admin only)
  */
 export const getAllBookings = async () => {
-  let list = [];
+  if (!db) return [];
 
-  if (isFirebaseConfigured() && db) {
-    try {
-      const snap = await getDocs(collection(db, BOOKINGS_COLLECTION));
-      snap.forEach((d) => {
-        list.push({ id: d.id, ...d.data() });
-      });
-    } catch (err) {
-      console.warn('Error fetching all bookings from Firestore:', err);
-    }
+  const list = [];
+  try {
+    const snap = await getDocs(collection(db, BOOKINGS_COLLECTION));
+    snap.forEach((d) => {
+      list.push({ id: d.id, ...d.data() });
+    });
+  } catch (err) {
+    console.error('Error fetching all reservations from Firestore:', err);
+    throw err;
   }
 
-  const local = getLocalBookings();
-  const map = new Map();
-  [...list, ...local].forEach((b) => map.set(b.id, b));
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
-  );
+  return list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 };
 
 /**
- * Cancel a booking
- * Customers can cancel if check-in is in future
+ * Cancel a booking with ownership and policy verification
  */
 export const cancelBooking = async (bookingId, userId, isAdmin = false) => {
-  let booking = null;
+  if (!db) throw new Error('Firestore not initialized.');
 
-  if (isFirebaseConfigured() && db) {
-    const docRef = doc(db, BOOKINGS_COLLECTION, bookingId);
-    const snap = await getDoc(docRef);
-    if (snap.exists()) {
-      booking = snap.data();
-    }
-  }
+  const docRef = doc(db, BOOKINGS_COLLECTION, bookingId);
+  const snap = await getDoc(docRef);
 
-  if (!booking) {
-    const local = getLocalBookings();
-    booking = local.find((b) => b.id === bookingId);
-  }
-
-  if (!booking) {
+  if (!snap.exists()) {
     throw new Error('Booking not found.');
   }
+
+  const booking = snap.data();
 
   // Authorization check
   if (!isAdmin && booking.userId !== userId) {
     throw new Error('Unauthorized to cancel this booking.');
   }
 
-  // Eligibility check: check-in date should be today or in future
+  // Eligibility check: check-in date must be today or in future
   const today = new Date().toISOString().split('T')[0];
   if (!isAdmin && booking.checkIn < today) {
     throw new Error('Past or ongoing bookings cannot be cancelled online.');
   }
 
-  if (isFirebaseConfigured() && db) {
-    await updateDoc(doc(db, BOOKINGS_COLLECTION, bookingId), {
-      status: 'cancelled',
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalBookings();
-  const idx = local.findIndex((b) => b.id === bookingId);
-  if (idx !== -1) {
-    local[idx].status = 'cancelled';
-    saveLocalBookings(local);
-  }
+  await updateDoc(docRef, {
+    status: 'cancelled',
+    updatedAt: serverTimestamp(),
+  });
 
   return true;
 };
@@ -305,18 +260,11 @@ export const cancelBooking = async (bookingId, userId, isAdmin = false) => {
  * Update booking status (Admin: checked-in, checked-out, confirmed, cancelled)
  */
 export const updateBookingStatus = async (bookingId, newStatus) => {
-  if (isFirebaseConfigured() && db) {
-    await updateDoc(doc(db, BOOKINGS_COLLECTION, bookingId), {
-      status: newStatus,
-      updatedAt: serverTimestamp(),
-    });
-  }
-
-  const local = getLocalBookings();
-  const idx = local.findIndex((b) => b.id === bookingId);
-  if (idx !== -1) {
-    local[idx].status = newStatus;
-    saveLocalBookings(local);
-  }
+  if (!db) throw new Error('Firestore not initialized.');
+  const docRef = doc(db, BOOKINGS_COLLECTION, bookingId);
+  await updateDoc(docRef, {
+    status: newStatus,
+    updatedAt: serverTimestamp(),
+  });
   return true;
 };
