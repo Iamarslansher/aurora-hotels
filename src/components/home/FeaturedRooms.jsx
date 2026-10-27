@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Users, Star, ArrowRight, CheckCircle2, BedSingle } from 'lucide-react';
 import { useHotel } from '../../context/HotelContext';
 import { formatPKR } from '../../utils/formatters';
+import { RoomImageCarousel } from '../common/RoomImageCarousel';
 
 export const FeaturedRooms = () => {
   const { rooms } = useHotel();
@@ -68,10 +69,10 @@ export const FeaturedRooms = () => {
             >
               {/* Room Image Container */}
               <div className="relative h-64 overflow-hidden">
-                <img
-                  src={room.images?.[0] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80'}
+                <RoomImageCarousel
+                  images={room.images}
                   alt={room.name}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                  className="group-hover:scale-105 transition-transform duration-700 ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-navy-950/80 via-transparent to-black/20" />
 

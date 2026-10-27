@@ -15,6 +15,7 @@ import {
 import { useHotel } from '../../context/HotelContext';
 import { addRoom, updateRoom, toggleRoomStatus } from '../../firebase/roomService';
 import { formatPKR } from '../../utils/formatters';
+import { getRoomImages } from '../../utils/roomImages';
 
 export const AdminRooms = () => {
   const { rooms, refreshRooms, addToast } = useHotel();
@@ -36,7 +37,7 @@ export const AdminRooms = () => {
     view: 'Garden View',
     description: '',
     amenities: 'High-Speed Wi-Fi, Smart TV, Climate Control, Ensuite Rain Shower',
-    imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+    imagesText: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
     isActive: true,
   });
 
@@ -56,7 +57,7 @@ export const AdminRooms = () => {
       view: 'Garden View',
       description: 'Elegant luxury suite tailored for absolute comfort.',
       amenities: 'High-Speed Wi-Fi, Smart TV, Climate Control, Ensuite Rain Shower',
-      imageUrl: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
+      imagesText: 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
       isActive: true,
     });
     setModalOpen(true);
@@ -76,7 +77,7 @@ export const AdminRooms = () => {
       view: room.view || 'Resort Grounds',
       description: room.description || '',
       amenities: Array.isArray(room.amenities) ? room.amenities.join(', ') : '',
-      imageUrl: room.images?.[0] || '',
+      imagesText: getRoomImages(room.images).join('\n'),
       isActive: room.isActive ?? true,
     });
     setModalOpen(true);
@@ -110,6 +111,13 @@ export const AdminRooms = () => {
         .split(',')
         .map((a) => a.trim())
         .filter(Boolean);
+      const images = formData.imagesText
+        .split(/\r?\n/)
+        .map((image) => image.trim())
+        .filter(Boolean);
+      if (images.length === 0) {
+        throw new Error('Provide at least one room image URL.');
+      }
 
       const roomPayload = {
         name: formData.name,
@@ -123,7 +131,7 @@ export const AdminRooms = () => {
         view: formData.view,
         description: formData.description,
         amenities: amenitiesArray,
-        images: [formData.imageUrl],
+        images,
         isActive: formData.isActive,
       };
 
@@ -205,7 +213,7 @@ export const AdminRooms = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
                         <img
-                          src={room.images?.[0] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=200&q=80'}
+                          src={getRoomImages(room.images)[0] || 'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=200&q=80'}
                           alt=""
                           className="w-12 h-12 rounded-xl object-cover shrink-0 border border-gold-500/20"
                         />
@@ -416,13 +424,14 @@ export const AdminRooms = () => {
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-navy-700">
-                  Image URL (Unsplash or CDN link) *
+                  Image URLs (one URL per line) *
                 </label>
-                <input
-                  type="url"
+                <textarea
+                  rows={3}
                   required
-                  value={formData.imageUrl}
-                  onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                  value={formData.imagesText}
+                  onChange={(e) => setFormData({ ...formData, imagesText: e.target.value })}
+                  placeholder="https://images.unsplash.com/..."
                   className="w-full px-3.5 py-2 rounded-xl border border-navy-200 text-sm font-medium text-navy-900 bg-ivory focus:ring-2 focus:ring-gold-500 focus:outline-none"
                 />
               </div>

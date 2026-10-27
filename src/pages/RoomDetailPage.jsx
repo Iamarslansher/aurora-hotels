@@ -8,6 +8,8 @@ import {
   Calendar,
   ShieldCheck,
   ArrowLeft,
+  ChevronLeft,
+  ChevronRight,
   Bed,
   Maximize2,
   Eye,
@@ -18,6 +20,7 @@ import { useHotel } from '../context/HotelContext';
 import { formatPKR } from '../utils/formatters';
 import { calculateNights, getTodayString, getTomorrowString, addDays } from '../utils/dateUtils';
 import { BookingModal } from '../components/booking/BookingModal';
+import { getRoomImages } from '../utils/roomImages';
 
 export const RoomDetailPage = () => {
   const { id } = useParams();
@@ -91,9 +94,11 @@ export const RoomDetailPage = () => {
     );
   }
 
-  const images = room.images && room.images.length > 0
-    ? room.images
-    : ['https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80'];
+  const images = getRoomImages(room.images);
+  if (images.length === 0) {
+    images.push('https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80');
+  }
+  const activeImage = activeImageIndex % images.length;
 
   return (
     <div className="min-h-screen bg-ivory pt-28 pb-20 text-navy-950">
@@ -139,14 +144,34 @@ export const RoomDetailPage = () => {
           {/* Main Large Photo */}
           <div className="lg:col-span-9 h-[380px] sm:h-[480px] rounded-3xl overflow-hidden border border-gold-500/20 shadow-luxury-lg relative">
             <img
-              src={images[activeImageIndex]}
+              src={images[activeImage]}
               alt={room.name}
               className="w-full h-full object-cover transition-all duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-navy-950/60 via-transparent to-transparent pointer-events-none" />
             <div className="absolute bottom-4 left-4 text-white text-xs bg-navy-950/80 px-3 py-1.5 rounded-lg border border-gold-500/30 backdrop-blur-md">
-              Photo {activeImageIndex + 1} of {images.length}
+              Photo {activeImage + 1} of {images.length}
             </div>
+            {images.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  aria-label="Show previous room photo"
+                  onClick={() => setActiveImageIndex((activeImage - 1 + images.length) % images.length)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full border border-gold-400/50 bg-navy-950/75 text-ivory flex items-center justify-center backdrop-blur-sm hover:bg-navy-900 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  type="button"
+                  aria-label="Show next room photo"
+                  onClick={() => setActiveImageIndex((activeImage + 1) % images.length)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 h-10 w-10 rounded-full border border-gold-400/50 bg-navy-950/75 text-ivory flex items-center justify-center backdrop-blur-sm hover:bg-navy-900 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </>
+            )}
           </div>
 
           {/* Thumbnails */}
@@ -156,7 +181,7 @@ export const RoomDetailPage = () => {
                 key={idx}
                 onClick={() => setActiveImageIndex(idx)}
                 className={`relative rounded-2xl overflow-hidden h-24 lg:h-36 w-32 lg:w-full shrink-0 border-2 transition-all ${
-                  activeImageIndex === idx
+                  activeImage === idx
                     ? 'border-gold-500 scale-[0.98] shadow-md ring-2 ring-gold-400/40'
                     : 'border-transparent opacity-75 hover:opacity-100'
                 }`}

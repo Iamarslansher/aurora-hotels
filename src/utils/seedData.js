@@ -54,6 +54,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'A refined studio retreat featuring warm ivory woodwork, a plush king bed, private balcony, and ambient smart lighting to recharge after busy meetings.',
@@ -114,6 +115,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1566665797739-1674de7a421a?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'Deep emerald velvet textures combined with warm ivory hues. Includes a dual vanity bathroom, walk-in dressing room, and sunset-facing floor-to-ceiling windows.',
@@ -143,6 +145,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1611892440504-42a792e24d32?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1590490360182-c33d57733427?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'A cozy retreat for two, featuring a comfortable king bed, warm interiors, and a peaceful garden outlook.',
@@ -202,6 +205,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1591088398332-8a7791972843?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'A spacious suite for up to five guests, with generous shared living space and comfortable sleeping arrangements for a group stay.',
@@ -230,6 +234,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1578683010236-d716f9a3f461?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'High-ceiling penthouse loft with twin luxury sleeping pavilions, a skylight viewing deck, and a plush conversation pit ideal for reunions and celebratory trips.',
@@ -259,6 +264,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'A private, polished setting for one-on-one business meetings, client discussions, and focused work sessions for up to two guests.',
@@ -288,6 +294,7 @@ export const INITIAL_ROOMS = [
     images: [
       'https://images.unsplash.com/photo-1497366811353-6870744d04b2?auto=format&fit=crop&w=1200&q=80',
       'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80',
+      'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=1200&q=80',
     ],
     description:
       'A spacious, high-end boardroom for team huddles, presentations, and collaborative planning with seating for up to five guests.',
