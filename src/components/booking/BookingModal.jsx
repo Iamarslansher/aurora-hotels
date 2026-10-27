@@ -9,6 +9,7 @@ import {
   CreditCard,
   AlertCircle,
   CheckCircle2,
+  LoaderCircle,
   Lock,
   Plus,
   Minus,
@@ -23,7 +24,7 @@ import { calculateServiceCost } from '../../firebase/serviceItemsService';
 export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) => {
   const navigate = useNavigate();
   const { user, userProfile } = useAuth();
-  const { services, searchParams, addToast, refreshRooms } = useHotel();
+  const { services, searchParams, addToast, refreshRooms, isRoomAvailable } = useHotel();
 
   // Booking fields
   const [checkIn, setCheckIn] = useState(searchParams.checkIn || getTodayString());
@@ -46,12 +47,46 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
 
   const [submitting, setSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const [roomAvailable, setRoomAvailable] = useState(null);
+  const [availabilityError, setAvailabilityError] = useState(false);
 
   // Update initial parameters if searchParams change
   useEffect(() => {
     if (searchParams.checkIn) setCheckIn(searchParams.checkIn);
     if (searchParams.checkOut) setCheckOut(searchParams.checkOut);
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!isOpen || !room || !checkIn || !checkOut || checkIn >= checkOut) {
+      setRoomAvailable(null);
+      setAvailabilityError(false);
+      setCheckingAvailability(false);
+      return undefined;
+    }
+
+    let active = true;
+    setCheckingAvailability(true);
+    setAvailabilityError(false);
+    isRoomAvailable(room.id, checkIn, checkOut)
+      .then((result) => {
+        if (active) setRoomAvailable(result.available);
+      })
+      .catch((error) => {
+        console.error('Room availability check failed:', error);
+        if (active) {
+          setRoomAvailable(null);
+          setAvailabilityError(true);
+        }
+      })
+      .finally(() => {
+        if (active) setCheckingAvailability(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [isOpen, room, checkIn, checkOut, isRoomAvailable]);
 
   if (!isOpen || !room) return null;
 
@@ -202,6 +237,28 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
               </div>
             </div>
           )}
+
+          {checkingAvailability ? (
+            <p className="flex items-center gap-2 text-xs text-navy-500" role="status">
+              <LoaderCircle className="h-4 w-4 animate-spin text-gold-600" />
+              Checking availability for these dates...
+            </p>
+          ) : roomAvailable === false ? (
+            <div className="flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800" role="status">
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+              Occupied on these dates
+            </div>
+          ) : roomAvailable ? (
+            <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-800" role="status">
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              Available for your selected dates
+            </div>
+          ) : availabilityError ? (
+            <div className="flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800" role="alert">
+              <AlertCircle className="h-4 w-4 shrink-0 text-amber-600" />
+              Availability could not be verified. Booking is disabled until it can be confirmed.
+            </div>
+          ) : null}
 
           {/* Date & Guest Parameters */}
           <div>
@@ -437,7 +494,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
             <button
               type="button"
               onClick={onClose}
-              disabled={submitting}
+              disabled={submitting || checkingAvailability || roomAvailable !== true || availabilityError}
               className="px-5 py-3 rounded-xl border border-navy-300 text-navy-800 text-xs font-bold uppercase tracking-wider hover:bg-navy-50"
             >
               Cancel
@@ -448,6 +505,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
               className="px-8 py-3 rounded-xl bg-gold-gradient hover:opacity-95 text-navy-950 text-xs font-bold uppercase tracking-wider shadow-gold-glow flex items-center gap-2 disabled:opacity-50 transition-all"
             >
               <CheckCircle2 className="w-4 h-4 text-navy-950" />
+              {submitting && <LoaderCircle className="h-4 w-4 animate-spin" />}
               <span>{submitting ? 'Verifying & Securing...' : 'Confirm Guaranteed Reservation'}</span>
             </button>
           </div>

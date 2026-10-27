@@ -9,9 +9,14 @@ import {
   AlertCircle,
   Filter,
   Lock,
+  LoaderCircle,
 } from 'lucide-react';
 import { useHotel } from '../../context/HotelContext';
-import { getAllBookings, updateBookingStatus } from '../../firebase/bookingService';
+import {
+  getAllBookings,
+  updateBookingServiceStatus,
+  updateBookingStatus,
+} from '../../firebase/bookingService';
 import { formatPKR, maskCNIC } from '../../utils/formatters';
 
 export const AdminReservations = () => {
@@ -22,6 +27,7 @@ export const AdminReservations = () => {
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [updatingServiceKey, setUpdatingServiceKey] = useState(null);
 
   // Revealed CNICs state for authorized audit inspection
   const [revealedCNICMap, setRevealedCNICMap] = useState({});
@@ -57,6 +63,44 @@ export const AdminReservations = () => {
         title: 'Update Error',
         message: err.message,
       });
+    }
+  };
+
+  const handleServiceStatusChange = async (booking, service) => {
+    const currentStatus = service.status || 'pending';
+    const nextStatus = currentStatus === 'pending' ? 'preparing' : 'delivered';
+    const updateKey = `${booking.id}:${service.serviceId}`;
+    setUpdatingServiceKey(updateKey);
+
+    try {
+      await updateBookingServiceStatus(booking.id, service.serviceId, nextStatus);
+      setBookings((current) =>
+        current.map((item) =>
+          item.id === booking.id
+            ? {
+                ...item,
+                servicesSnapshot: item.servicesSnapshot.map((requestedService) =>
+                  requestedService.serviceId === service.serviceId
+                    ? { ...requestedService, status: nextStatus }
+                    : requestedService
+                ),
+              }
+            : item
+        )
+      );
+      addToast({
+        type: 'success',
+        title: 'Service Status Updated',
+        message: `${service.name} marked ${nextStatus}.`,
+      });
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Service Update Error',
+        message: error.message || 'Could not update the requested service.',
+      });
+    } finally {
+      setUpdatingServiceKey(null);
     }
   };
 
@@ -204,9 +248,29 @@ export const AdminReservations = () => {
                         {b.servicesSnapshot && b.servicesSnapshot.length > 0 ? (
                           <div className="space-y-1">
                             {b.servicesSnapshot.map((s, idx) => (
-                              <div key={idx} className="text-[11px] text-navy-700 flex items-center justify-between gap-2">
-                                <span>• {s.name}</span>
-                                <span className="font-semibold text-gold-700">{formatPKR(s.calculatedCost)}</span>
+                              <div key={s.serviceId || idx} className="rounded-lg bg-ivory/70 p-2 text-[11px] text-navy-700">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>• {s.name}</span>
+                                  <span className="font-semibold text-gold-700">{formatPKR(s.calculatedCost)}</span>
+                                </div>
+                                <div className="mt-1.5 flex flex-wrap items-center justify-between gap-2">
+                                  <span className="font-semibold capitalize text-navy-500">
+                                    {s.status || 'pending'}
+                                  </span>
+                                  {s.serviceId && (s.status || 'pending') !== 'delivered' && (
+                                    <button
+                                      type="button"
+                                      disabled={updatingServiceKey === `${b.id}:${s.serviceId}`}
+                                      onClick={() => handleServiceStatusChange(b, s)}
+                                      className="inline-flex items-center gap-1 rounded-md border border-gold-300 bg-white px-2 py-1 font-semibold text-gold-800 transition-colors hover:bg-gold-50 disabled:opacity-60"
+                                    >
+                                      {updatingServiceKey === `${b.id}:${s.serviceId}` ? (
+                                        <LoaderCircle className="h-3 w-3 animate-spin" />
+                                      ) : null}
+                                      Mark {(s.status || 'pending') === 'pending' ? 'Preparing' : 'Delivered'}
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>

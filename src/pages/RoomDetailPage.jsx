@@ -59,7 +59,13 @@ export const RoomDetailPage = () => {
       }
     };
 
-    verify();
+    verify().catch((error) => {
+      console.error('Room availability check failed:', error);
+      if (isMounted) {
+        setAvailabilityStatus('error');
+        setCheckingAvailability(false);
+      }
+    });
     return () => {
       isMounted = false;
     };
@@ -298,11 +304,18 @@ export const RoomDetailPage = () => {
                     <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
                     <span>This {room.pricingUnit === 'day' ? 'space' : 'suite'} is available for your selected dates.</span>
                   </div>
-                ) : (
+                ) : availabilityStatus === 'unavailable' ? (
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                    <span>This room is unavailable for your selected dates.</span>
+                    <span>Occupied on these dates</span>
                   </div>
+                ) : availabilityStatus === 'error' ? (
+                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Availability could not be verified. Booking is disabled until it can be confirmed.</span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-navy-500 animate-pulse">Checking live availability...</p>
                 )}
               </div>
 
@@ -323,7 +336,7 @@ export const RoomDetailPage = () => {
               {/* Action Button */}
               <button
                 type="button"
-                disabled={availabilityStatus === 'unavailable' || checkingAvailability}
+                disabled={availabilityStatus !== 'available' || checkingAvailability}
                 onClick={() => setIsBookingOpen(true)}
                 className="w-full py-3.5 rounded-xl bg-gold-gradient hover:opacity-95 text-navy-950 font-bold text-xs uppercase tracking-wider shadow-gold-glow flex items-center justify-center gap-2 transition-all disabled:opacity-40"
               >

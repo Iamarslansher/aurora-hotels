@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Sparkles, BedDouble, ShieldCheck, Star } from "lucide-react";
 import { SearchBar } from "./SearchBar";
+import { AiPlannerModal } from "./AiPlannerModal";
 
 export const HeroSection = () => {
+  const [plannerOpen, setPlannerOpen] = useState(false);
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden pt-28 pb-16 lg:pt-36 lg:pb-24">
       {/* Background Video Layer */}
@@ -81,13 +84,14 @@ export const HeroSection = () => {
             <BedDouble className="w-4 h-4 text-navy-950" />
             <span>Explore Rooms</span>
           </Link>
-          <Link
-            to="/ai-planner"
+          <button
+            type="button"
+            onClick={() => setPlannerOpen(true)}
             className="px-8 py-3.5 rounded-xl bg-navy-900/80 hover:bg-navy-800 text-gold-300 font-semibold text-sm tracking-wide border border-gold-500/40 hover:border-gold-400 backdrop-blur-md transform hover:-translate-y-0.5 transition-all flex items-center gap-2 shadow-luxury"
           >
             <Sparkles className="w-4 h-4 text-gold-400" />
             <span>Plan My Stay with AI</span>
-          </Link>
+          </button>
         </motion.div>
 
         {/* Hero Search Bar Component */}
@@ -125,6 +129,7 @@ export const HeroSection = () => {
           </div>
         </motion.div>
       </div>
+      <AiPlannerModal isOpen={plannerOpen} onClose={() => setPlannerOpen(false)} />
     </section>
   );
 };

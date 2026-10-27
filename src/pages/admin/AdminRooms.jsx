@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Eye,
   Star,
+  LoaderCircle,
 } from 'lucide-react';
 import { useHotel } from '../../context/HotelContext';
 import { addRoom, updateRoom, toggleRoomStatus } from '../../firebase/roomService';
@@ -464,6 +465,7 @@ export const AdminRooms = () => {
                   disabled={saving}
                   className="px-6 py-2.5 rounded-xl bg-gold-gradient text-navy-950 text-xs font-bold uppercase tracking-wider shadow-sm hover:opacity-95 disabled:opacity-50"
                 >
+                  {saving && <LoaderCircle className="mr-2 inline h-4 w-4 animate-spin" />}
                   {saving ? 'Saving...' : editingRoom ? 'Update Suite' : 'Create Suite'}
                 </button>
               </div>

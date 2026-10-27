@@ -57,13 +57,12 @@ export const HotelProvider = ({ children }) => {
     setSearchParams((prev) => ({ ...prev, ...newParams }));
   };
 
-  const isRoomAvailable = async (roomId, checkIn, checkOut) => {
-    return await checkRoomAvailability(
+  const isRoomAvailable = useCallback((roomId, checkIn, checkOut) =>
+    checkRoomAvailability(
       roomId,
       checkIn || searchParams.checkIn,
       checkOut || searchParams.checkOut
-    );
-  };
+    ), [searchParams.checkIn, searchParams.checkOut]);
 
   return (
     <HotelContext.Provider

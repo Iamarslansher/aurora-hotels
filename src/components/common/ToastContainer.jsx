@@ -7,7 +7,7 @@ export const ToastContainer = () => {
   const { toasts, removeToast } = useHotel();
 
   return (
-    <div className="fixed top-20 right-4 z-50 flex flex-col gap-3 max-w-sm w-full pointer-events-none">
+    <div className="fixed top-20 right-4 z-[70] flex flex-col gap-3 max-w-sm w-full pointer-events-none">
       <AnimatePresence>
         {toasts.map((toast) => {
           const isError = toast.type === 'error';

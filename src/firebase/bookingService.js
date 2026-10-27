@@ -86,6 +86,7 @@ export const createBooking = async ({
       unitPrice: srv.price,
       pricingModel: srv.pricingModel,
       calculatedCost: cost,
+      status: 'pending',
     };
   });
 
@@ -268,5 +269,44 @@ export const updateBookingStatus = async (bookingId, newStatus) => {
     status: newStatus,
     updatedAt: serverTimestamp(),
   });
+  return true;
+};
+
+export const updateBookingServiceStatus = async (bookingId, serviceId, newStatus) => {
+  const allowedStatuses = ['pending', 'preparing', 'delivered'];
+  if (!allowedStatuses.includes(newStatus)) {
+    throw new Error('Invalid service status.');
+  }
+  if (!db) throw new Error('Firestore not initialized.');
+
+  const bookingRef = doc(db, BOOKINGS_COLLECTION, bookingId);
+  await runTransaction(db, async (transaction) => {
+    const bookingSnapshot = await transaction.get(bookingRef);
+    if (!bookingSnapshot.exists()) {
+      throw new Error('Booking not found.');
+    }
+
+    const booking = bookingSnapshot.data();
+    const services = booking.servicesSnapshot || [];
+    const serviceIndex = services.findIndex((service) => service.serviceId === serviceId);
+    if (serviceIndex < 0) {
+      throw new Error('Requested service not found.');
+    }
+
+    const currentStatus = services[serviceIndex].status || 'pending';
+    const currentIndex = allowedStatuses.indexOf(currentStatus);
+    if (allowedStatuses[currentIndex + 1] !== newStatus) {
+      throw new Error('Service status must advance from Pending to Preparing to Delivered.');
+    }
+
+    const updatedServices = services.map((service, index) =>
+      index === serviceIndex ? { ...service, status: newStatus } : service
+    );
+    transaction.update(bookingRef, {
+      servicesSnapshot: updatedServices,
+      updatedAt: serverTimestamp(),
+    });
+  });
+
   return true;
 };
