@@ -21,6 +21,13 @@ import { formatPKR } from '../utils/formatters';
 import { getTodayString, getTomorrowString, addDays } from '../utils/dateUtils';
 import { BookingModal } from '../components/booking/BookingModal';
 
+const cleanAiNarrative = (narrative) =>
+  narrative
+    .replace(/^#{1,6}[ \t]+/gm, '')
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*([^*\n]+)\*/g, '$1')
+    .replace(/^[ \t]*[-*][ \t]+/gm, '• ');
+
 export const AiPlannerPage = () => {
   const [urlParams] = useSearchParams();
   const { rooms, services } = useHotel();
@@ -350,7 +357,7 @@ export const AiPlannerPage = () => {
 
                 {/* AI Narrative */}
                 <div className="prose prose-invert prose-sm max-w-none text-ivory-200 leading-relaxed bg-navy-900/60 p-5 rounded-2xl border border-gold-500/20 whitespace-pre-line font-sans text-xs sm:text-sm">
-                  {planResult.aiNarrative}
+                  {cleanAiNarrative(planResult.aiNarrative)}
                 </div>
 
                 {/* Itemized Math Card (Preventing Hallucination) */}
