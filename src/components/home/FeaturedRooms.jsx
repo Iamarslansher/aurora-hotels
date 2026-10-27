@@ -93,10 +93,14 @@ export const FeaturedRooms = () => {
                 {/* Price Display */}
                 <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
                   <div>
-                    <span className="text-xs uppercase tracking-wider text-ivory-300 block">Nightly Rate</span>
+                    <span className="text-xs uppercase tracking-wider text-ivory-300 block">
+                      {room.pricingUnit === 'day' ? 'Daily Rate' : 'Nightly Rate'}
+                    </span>
                     <div className="text-xl sm:text-2xl font-serif font-bold text-gold-300">
                       {formatPKR(room.pricePerNight)}
-                      <span className="text-xs font-sans text-ivory-300 font-normal ml-1">/ night</span>
+                      <span className="text-xs font-sans text-ivory-300 font-normal ml-1">
+                        / {room.pricingUnit === 'day' ? 'day' : 'night'}
+                      </span>
                     </div>
                   </div>
 

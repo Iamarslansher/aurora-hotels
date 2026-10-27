@@ -217,16 +217,24 @@ export const CustomerBookingsPage = () => {
 
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs bg-ivory p-3.5 rounded-xl border border-navy-100">
                       <div>
-                        <span className="text-navy-500 block">Check-In</span>
+                        <span className="text-navy-500 block">
+                          {b.roomSnapshot?.pricingUnit === 'day' ? 'Start Date' : 'Check-In'}
+                        </span>
                         <span className="font-bold text-navy-900">{b.checkIn}</span>
                       </div>
                       <div>
-                        <span className="text-navy-500 block">Check-Out</span>
+                        <span className="text-navy-500 block">
+                          {b.roomSnapshot?.pricingUnit === 'day' ? 'End Date' : 'Check-Out'}
+                        </span>
                         <span className="font-bold text-navy-900">{b.checkOut}</span>
                       </div>
                       <div>
-                        <span className="text-navy-500 block">Length of Stay</span>
-                        <span className="font-bold text-navy-900">{b.nights} Night{b.nights > 1 ? 's' : ''} ({b.guestCount} Guests)</span>
+                        <span className="text-navy-500 block">
+                          {b.roomSnapshot?.pricingUnit === 'day' ? 'Duration' : 'Length of Stay'}
+                        </span>
+                        <span className="font-bold text-navy-900">
+                          {b.nights} {b.roomSnapshot?.pricingUnit === 'day' ? 'Day' : 'Night'}{b.nights > 1 ? 's' : ''} ({b.guestCount} Guests)
+                        </span>
                       </div>
                     </div>
 

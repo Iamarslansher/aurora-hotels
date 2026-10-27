@@ -104,6 +104,7 @@ export const createBooking = async ({
       category: room.category,
       roomNumber: room.roomNumber,
       pricePerNight: roomNightlyPrice,
+      pricingUnit: room.pricingUnit || 'night',
       image: room.images?.[0] || '',
     },
     guestDetails: {
@@ -117,6 +118,7 @@ export const createBooking = async ({
     nights,
     pricingSnapshot: {
       roomNightlyPrice,
+      pricingUnit: room.pricingUnit || 'night',
       nights,
       roomSubtotal,
       servicesTotal,

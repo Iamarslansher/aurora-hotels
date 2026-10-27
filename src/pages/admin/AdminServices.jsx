@@ -288,6 +288,7 @@ export const AdminServices = () => {
                     <option value="Room Comfort">Room Comfort</option>
                     <option value="Bedding">Bedding</option>
                     <option value="Transport">Transport</option>
+                    <option value="Meeting Services">Meeting Services</option>
                   </select>
                 </div>
               </div>

@@ -127,6 +127,7 @@ export const SearchBar = ({ variant = 'hero' }) => {
             <option value="Single Room">Single Room (1 Guest)</option>
             <option value="Couple Room">Couple Room (2 Guests)</option>
             <option value="Friends Room">Friends Room (Up to 5 Guests)</option>
+            <option value="Meeting Rooms">Meeting Rooms</option>
           </select>
         </div>
       </div>

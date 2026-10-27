@@ -36,6 +36,7 @@ export const RoomsPage = () => {
     { label: 'Single Room (1 Guest)', value: 'Single Room' },
     { label: 'Couple Room (2 Guests)', value: 'Couple Room' },
     { label: 'Friends Room (Up to 5 Guests)', value: 'Friends Room' },
+    { label: 'Meeting Rooms (Up to 5 Guests)', value: 'Meeting Rooms' },
   ];
 
   // Filter & Sort
@@ -199,10 +200,14 @@ export const RoomsPage = () => {
                   {/* Bottom Image Info */}
                   <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between text-white">
                     <div>
-                      <span className="text-xs uppercase tracking-wider text-ivory-300 block">Nightly Price</span>
+                      <span className="text-xs uppercase tracking-wider text-ivory-300 block">
+                        {room.pricingUnit === 'day' ? 'Daily Price' : 'Nightly Price'}
+                      </span>
                       <div className="text-xl sm:text-2xl font-serif font-bold text-gold-300">
                         {formatPKR(room.pricePerNight)}
-                        <span className="text-xs font-sans text-ivory-300 font-normal ml-1">/ night</span>
+                        <span className="text-xs font-sans text-ivory-300 font-normal ml-1">
+                          / {room.pricingUnit === 'day' ? 'day' : 'night'}
+                        </span>
                       </div>
                     </div>
 

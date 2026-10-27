@@ -63,6 +63,7 @@ export const BookingConfirmationPage = () => {
   const handlePrint = () => {
     window.print();
   };
+  const durationUnit = booking.roomSnapshot?.pricingUnit === 'day' ? 'day' : 'night';
 
   return (
     <div className="min-h-screen bg-ivory pt-28 pb-20 text-navy-950">
@@ -121,19 +122,31 @@ export const BookingConfirmationPage = () => {
             {/* Stay Dates */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center p-4 rounded-xl bg-navy-950 text-ivory">
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-gold-400 block">Check-In</span>
+                <span className="text-[10px] uppercase tracking-wider text-gold-400 block">
+                  {durationUnit === 'day' ? 'Start Date' : 'Check-In'}
+                </span>
                 <p className="font-serif font-bold text-lg mt-0.5">{booking.checkIn}</p>
-                <span className="text-[10px] text-ivory-400">After 2:00 PM</span>
+                {durationUnit !== 'day' && (
+                  <span className="text-[10px] text-ivory-400">After 2:00 PM</span>
+                )}
               </div>
               <div className="border-y sm:border-y-0 sm:border-x border-navy-800 py-2 sm:py-0">
                 <span className="text-[10px] uppercase tracking-wider text-gold-400 block">Duration</span>
-                <p className="font-serif font-bold text-lg mt-0.5">{booking.nights} Night{booking.nights > 1 ? 's' : ''}</p>
-                <span className="text-[10px] text-emerald-400 font-semibold">Active Stay</span>
+                <p className="font-serif font-bold text-lg mt-0.5">
+                  {booking.nights} {durationUnit}{booking.nights > 1 ? 's' : ''}
+                </p>
+                <span className="text-[10px] text-emerald-400 font-semibold">
+                  {durationUnit === 'day' ? 'Reserved' : 'Active Stay'}
+                </span>
               </div>
               <div>
-                <span className="text-[10px] uppercase tracking-wider text-gold-400 block">Check-Out</span>
+                <span className="text-[10px] uppercase tracking-wider text-gold-400 block">
+                  {durationUnit === 'day' ? 'End Date' : 'Check-Out'}
+                </span>
                 <p className="font-serif font-bold text-lg mt-0.5">{booking.checkOut}</p>
-                <span className="text-[10px] text-ivory-400">Before 12:00 PM</span>
+                {durationUnit !== 'day' && (
+                  <span className="text-[10px] text-ivory-400">Before 12:00 PM</span>
+                )}
               </div>
             </div>
 
@@ -145,7 +158,7 @@ export const BookingConfirmationPage = () => {
 
               <div className="flex justify-between text-sm text-navy-700">
                 <span>
-                  Room Subtotal ({booking.nights} nights × {formatPKR(booking.pricingSnapshot?.roomNightlyPrice)})
+                  Room Subtotal ({booking.nights} {durationUnit}{booking.nights > 1 ? 's' : ''} × {formatPKR(booking.pricingSnapshot?.roomNightlyPrice)})
                 </span>
                 <span className="font-semibold text-navy-950">
                   {formatPKR(booking.pricingSnapshot?.roomSubtotal)}

@@ -116,10 +116,14 @@ export const RoomDetailPage = () => {
           </div>
 
           <div className="text-left md:text-right">
-            <span className="text-xs uppercase tracking-wider text-navy-600 block">Nightly Rate</span>
+            <span className="text-xs uppercase tracking-wider text-navy-600 block">
+              {room.pricingUnit === 'day' ? 'Daily Rate' : 'Nightly Rate'}
+            </span>
             <div className="text-2xl sm:text-3xl font-serif font-bold text-gold-700">
               {formatPKR(room.pricePerNight)}
-              <span className="text-sm font-sans font-normal text-navy-600 ml-1">/ night</span>
+              <span className="text-sm font-sans font-normal text-navy-600 ml-1">
+                / {room.pricingUnit === 'day' ? 'day' : 'night'}
+              </span>
             </div>
           </div>
         </div>
@@ -219,10 +223,18 @@ export const RoomDetailPage = () => {
 
             {/* Hotel Policies Note */}
             <div className="bg-ivory-300/40 p-6 rounded-2xl border border-gold-500/20 space-y-2 text-xs text-navy-700">
-              <h4 className="font-bold text-navy-900 text-sm">Aurora House Policies</h4>
-              <p>• Check-in begins at 2:00 PM; Check-out is at 12:00 PM.</p>
+              <h4 className="font-bold text-navy-900 text-sm">
+                {room.pricingUnit === 'day' ? 'Meeting Space Policies' : 'Aurora House Policies'}
+              </h4>
+              {room.pricingUnit === 'day' ? (
+                <p>• Meeting room reservations are charged per day and reserved for the selected dates.</p>
+              ) : (
+                <p>• Check-in begins at 2:00 PM; Check-out is at 12:00 PM.</p>
+              )}
               <p>• Government issued CNIC or Passport is required at front desk check-in.</p>
-              <p>• Free cancellation up to 24 hours prior to scheduled arrival date.</p>
+              <p>
+                • Free cancellation up to 24 hours prior to scheduled {room.pricingUnit === 'day' ? 'reservation' : 'arrival'} date.
+              </p>
             </div>
           </div>
 
@@ -237,7 +249,9 @@ export const RoomDetailPage = () => {
                   <span className="font-serif text-2xl font-bold text-navy-900">
                     {formatPKR(room.pricePerNight)}
                   </span>
-                  <span className="text-xs text-navy-500">per night</span>
+                  <span className="text-xs text-navy-500">
+                    per {room.pricingUnit === 'day' ? 'day' : 'night'}
+                  </span>
                 </div>
               </div>
 
@@ -245,7 +259,7 @@ export const RoomDetailPage = () => {
               <div className="space-y-3 pt-3 border-t border-navy-100">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-navy-700">
-                    Check-In
+                    {room.pricingUnit === 'day' ? 'Start Date' : 'Check-In'}
                   </label>
                   <input
                     type="date"
@@ -263,7 +277,7 @@ export const RoomDetailPage = () => {
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-navy-700">
-                    Check-Out
+                    {room.pricingUnit === 'day' ? 'End Date' : 'Check-Out'}
                   </label>
                   <input
                     type="date"
@@ -282,7 +296,7 @@ export const RoomDetailPage = () => {
                 ) : availabilityStatus === 'available' ? (
                   <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    <span>This suite is available for your selected dates.</span>
+                    <span>This {room.pricingUnit === 'day' ? 'space' : 'suite'} is available for your selected dates.</span>
                   </div>
                 ) : (
                   <div className="p-3 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center gap-2">
@@ -295,7 +309,9 @@ export const RoomDetailPage = () => {
               {/* Estimated Math */}
               <div className="p-4 rounded-xl bg-ivory border border-gold-500/20 text-xs space-y-2">
                 <div className="flex justify-between text-navy-700">
-                  <span>{nights} night{nights > 1 ? 's' : ''} stay</span>
+                  <span>
+                    {nights} {room.pricingUnit === 'day' ? 'day' : 'night'}{nights > 1 ? 's' : ''} {room.pricingUnit === 'day' ? 'booking' : 'stay'}
+                  </span>
                   <span className="font-bold text-navy-900">{formatPKR(estimatedSubtotal)}</span>
                 </div>
                 <div className="flex justify-between text-navy-700">

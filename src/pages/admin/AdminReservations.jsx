@@ -165,7 +165,7 @@ export const AdminReservations = () => {
                           {b.checkIn} → {b.checkOut}
                         </p>
                         <span className="text-[11px] text-navy-500">
-                          {b.nights} Night{b.nights > 1 ? 's' : ''}
+                          {b.nights} {b.roomSnapshot?.pricingUnit === 'day' ? 'Day' : 'Night'}{b.nights > 1 ? 's' : ''}
                         </span>
                       </td>
 

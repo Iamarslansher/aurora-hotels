@@ -41,6 +41,7 @@ export const AdminReports = () => {
     'Single Room': { count: 0, revenue: 0 },
     'Couple Room': { count: 0, revenue: 0 },
     'Friends Room': { count: 0, revenue: 0 },
+    'Meeting Rooms': { count: 0, revenue: 0 },
   };
 
   confirmed.forEach((b) => {

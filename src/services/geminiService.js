@@ -34,7 +34,9 @@ export const calculateBudgetPackage = ({
   const guestCount = Number(guests) || 1;
 
   // 1. Filter rooms matching capacity
-  let matchingRooms = availableRooms.filter((r) => r.capacity >= guestCount && r.isActive !== false);
+  let matchingRooms = availableRooms.filter(
+    (r) => r.capacity >= guestCount && r.isActive !== false && r.category !== 'Meeting Rooms'
+  );
 
   if (roomTypePreference && roomTypePreference !== 'Any') {
     const prefMatches = matchingRooms.filter(

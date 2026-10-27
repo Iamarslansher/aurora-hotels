@@ -88,6 +88,11 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link to="/rooms?category=Meeting Rooms" className="hover:text-gold-400 transition-colors">
+                  Meeting Rooms
+                </Link>
+              </li>
+              <li>
                 <Link to="/ai-planner" className="hover:text-gold-400 transition-colors flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-gold-400" />
                   AI Budget Planner

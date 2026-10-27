@@ -29,6 +29,7 @@ export const AdminRooms = () => {
     category: 'Couple Room',
     capacity: 2,
     pricePerNight: 8500,
+    pricingUnit: 'night',
     size: '450 sq ft',
     bedType: '1 King Bed',
     view: 'Garden View',
@@ -48,6 +49,7 @@ export const AdminRooms = () => {
       category: 'Couple Room',
       capacity: 2,
       pricePerNight: 8500,
+      pricingUnit: 'night',
       size: '450 sq ft',
       bedType: '1 King Bed',
       view: 'Garden View',
@@ -67,6 +69,7 @@ export const AdminRooms = () => {
       category: room.category,
       capacity: room.capacity,
       pricePerNight: room.pricePerNight,
+      pricingUnit: room.pricingUnit || 'night',
       size: room.size || '450 sq ft',
       bedType: room.bedType || '1 King Bed',
       view: room.view || 'Resort Grounds',
@@ -113,6 +116,7 @@ export const AdminRooms = () => {
         category: formData.category,
         capacity: Number(formData.capacity),
         pricePerNight: Number(formData.pricePerNight),
+        pricingUnit: formData.pricingUnit,
         size: formData.size,
         bedType: formData.bedType,
         view: formData.view,
@@ -187,7 +191,7 @@ export const AdminRooms = () => {
                 <th className="px-6 py-4 font-semibold">Number</th>
                 <th className="px-6 py-4 font-semibold">Category</th>
                 <th className="px-6 py-4 font-semibold">Capacity</th>
-                <th className="px-6 py-4 font-semibold">Price / Night</th>
+                <th className="px-6 py-4 font-semibold">Price / Night or Day</th>
                 <th className="px-6 py-4 font-semibold">Status</th>
                 <th className="px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
@@ -225,7 +229,7 @@ export const AdminRooms = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 font-serif font-bold text-navy-950">
-                      {formatPKR(room.pricePerNight)}
+                      {formatPKR(room.pricePerNight)} / {room.pricingUnit === 'day' ? 'day' : 'night'}
                     </td>
                     <td className="px-6 py-4">
                       <span
@@ -323,12 +327,20 @@ export const AdminRooms = () => {
                   </label>
                   <select
                     value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    onChange={(e) => {
+                      const category = e.target.value;
+                      setFormData({
+                        ...formData,
+                        category,
+                        pricingUnit: category === 'Meeting Rooms' ? 'day' : 'night',
+                      });
+                    }}
                     className="w-full px-3 py-2 rounded-xl border border-navy-200 text-xs font-medium text-navy-900 bg-ivory focus:ring-2 focus:ring-gold-500 focus:outline-none"
                   >
                     <option value="Single Room">Single Room (1 Guest)</option>
                     <option value="Couple Room">Couple Room (2 Guests)</option>
                     <option value="Friends Room">Friends Room (Up to 5 Guests)</option>
+                    <option value="Meeting Rooms">Meeting Rooms</option>
                   </select>
                 </div>
 
@@ -349,7 +361,7 @@ export const AdminRooms = () => {
 
                 <div className="space-y-1">
                   <label className="text-xs font-semibold uppercase tracking-wider text-navy-700">
-                    Price / Night (PKR) *
+                    Price / {formData.pricingUnit === 'day' ? 'Day' : 'Night'} (PKR) *
                   </label>
                   <input
                     type="number"

@@ -65,7 +65,7 @@ export const AdminDashboard = () => {
     {
       label: 'Active Hotel Suites',
       value: `${activeRoomsCount} / ${rooms.length}`,
-      subtext: 'Single, Couple & Friends',
+      subtext: 'Guest rooms & meeting spaces',
       icon: BedDouble,
       color: 'text-navy-900',
       bgColor: 'bg-navy-50 border-navy-200',
@@ -199,7 +199,7 @@ export const AdminDashboard = () => {
                     <td className="px-6 py-4">
                       <span>{b.checkIn} → {b.checkOut}</span>
                       <span className="block text-[11px] text-navy-500">
-                        {b.nights} night{b.nights > 1 ? 's' : ''} ({b.guestCount} guests)
+                        {b.nights} {b.roomSnapshot?.pricingUnit === 'day' ? 'day' : 'night'}{b.nights > 1 ? 's' : ''} ({b.guestCount} guests)
                       </span>
                     </td>
                     <td className="px-6 py-4 font-serif font-bold text-navy-950">

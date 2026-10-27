@@ -15,7 +15,7 @@ export const HotelProvider = ({ children }) => {
     checkIn: getTodayString(),
     checkOut: getTomorrowString(),
     guests: 2,
-    roomType: 'All', // 'All', 'Single Room', 'Couple Room', 'Friends Room'
+    roomType: 'All', // 'All' or a room category, including Meeting Rooms
   });
 
   // Global notification toast state

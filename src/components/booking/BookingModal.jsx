@@ -57,6 +57,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
 
   const nights = calculateNights(checkIn, checkOut);
   const roomSubtotal = room.pricePerNight * nights;
+  const durationUnit = room.pricingUnit === 'day' ? 'day' : 'night';
 
   // Selected services calculations
   const activeSelectedServices = services.filter((s) =>
@@ -175,7 +176,9 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
               <span>•</span>
               <span>Max {room.capacity} Guest{room.capacity > 1 ? 's' : ''}</span>
               <span>•</span>
-              <span className="text-emerald-400">{formatPKR(room.pricePerNight)} / night</span>
+              <span className="text-emerald-400">
+                {formatPKR(room.pricePerNight)} / {durationUnit}
+              </span>
             </div>
           </div>
 
@@ -204,12 +207,12 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
           <div>
             <h3 className="font-serif text-lg font-bold text-navy-900 mb-3 flex items-center gap-2">
               <Calendar className="w-4 h-4 text-gold-600" />
-              Stay Dates &amp; Guests
+              {durationUnit === 'day' ? 'Meeting Dates & Guests' : 'Stay Dates & Guests'}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-navy-700">
-                  Check-In Date *
+                  {durationUnit === 'day' ? 'Start Date *' : 'Check-In Date *'}
                 </label>
                 <input
                   type="date"
@@ -228,7 +231,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
 
               <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase tracking-wider text-navy-700">
-                  Check-Out Date *
+                  {durationUnit === 'day' ? 'End Date *' : 'Check-Out Date *'}
                 </label>
                 <input
                   type="date"
@@ -258,7 +261,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
               </div>
             </div>
             <p className="text-xs text-navy-600 mt-2">
-              Duration: <strong>{nights} night{nights > 1 ? 's' : ''}</strong>
+              Duration: <strong>{nights} {durationUnit}{nights > 1 ? 's' : ''}</strong>
             </p>
           </div>
 
@@ -367,7 +370,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
                       </span>
                       <span className="block text-[10px] text-navy-500">
                         {srv.pricingModel === 'per_person_per_day'
-                          ? 'Per guest/night'
+                          ? `Per guest/${durationUnit}`
                           : srv.pricingModel === 'per_person'
                           ? 'Per guest'
                           : 'Flat fee'}
@@ -401,7 +404,7 @@ export const BookingModal = ({ room, isOpen, onClose, initialServices = [] }) =>
 
             <div className="flex justify-between text-xs sm:text-sm">
               <span className="text-navy-700">
-                {room.name} ({nights} night{nights > 1 ? 's' : ''} × {formatPKR(room.pricePerNight)})
+                {room.name} ({nights} {durationUnit}{nights > 1 ? 's' : ''} × {formatPKR(room.pricePerNight)})
               </span>
               <span className="font-medium text-navy-950">{formatPKR(roomSubtotal)}</span>
             </div>
